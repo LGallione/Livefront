@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "9PoY39hP56qhbZvUq3pdxF8aCiSUlokCH285s9aPwg4=",
+  "Source": "ReferralSystem.Api",
+  "BasePath": "_content/ReferralSystem.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

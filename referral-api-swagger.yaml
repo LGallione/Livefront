@@ -1,0 +1,246 @@
+openapi: 3.0.0
+info:
+  title: Referral System API
+  description: API specification for the referral feature
+  version: '1.0'
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    ReferralLinkRequest:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum: [sms, email, social]
+          description: The channel through which the referral will be shared
+        destination:
+          type: string
+          description: Deep link destination after app install
+
+    ReferralLinkResponse:
+      type: object
+      required:
+        - referralLink
+        - shortLink
+        - expiresAt
+        - referralCode
+      properties:
+        referralLink:
+          type: string
+          description: The full shareable referral link
+        shortLink:
+          type: string
+          description: Shortened version for social sharing
+        expiresAt:
+          type: string
+          format: date-time
+          description: Expiration timestamp in ISO 8601 format
+        referralCode:
+          type: string
+          description: User's referral code embedded in the link
+        destination:
+          type: string
+          description: Deep link destination
+
+    ReferralStats:
+      type: object
+      properties:
+        totalReferrals:
+          type: integer
+        successfulReferrals:
+          type: integer
+        pendingReferrals:
+          type: integer
+        referralHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: string
+                enum: [pending, completed, expired]
+              createdAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+              referredUser:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  joinDate:
+                    type: string
+                    format: date-time
+
+    ReferralValidationRequest:
+      type: object
+      required:
+        - referralCode
+        - referralLink
+      properties:
+        referralCode:
+          type: string
+        referralLink:
+          type: string
+
+    ReferralValidationResponse:
+      type: object
+      required:
+        - isValid
+      properties:
+        isValid:
+          type: boolean
+        destination:
+          type: string
+        referrerInfo:
+          type: object
+          properties:
+            id:
+              type: string
+            referralCode:
+              type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /referrals/links:
+    post:
+      summary: Generate a new referral link
+      description: Creates a new referral link for sharing
+      operationId: generateReferralLink
+      tags:
+        - Referrals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralLinkRequest'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralLinkResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /referrals/stats:
+    get:
+      summary: Get referral statistics
+      description: Retrieve statistics about user's referrals
+      operationId: getReferralStats
+      tags:
+        - Referrals
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralStats'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /referrals/validate:
+    post:
+      summary: Validate a referral link
+      description: Validates a referral link before processing
+      operationId: validateReferralLink
+      tags:
+        - Referrals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralValidationRequest'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralValidationResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Gone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error' 
