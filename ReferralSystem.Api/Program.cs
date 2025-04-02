@@ -16,8 +16,10 @@ public partial class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        // Register our mock service
-        builder.Services.AddSingleton<IReferralService, MockReferralService>();
+        // Register our services
+        builder.Services.AddSingleton<IThirdPartyReferralService, MockThirdPartyReferralService>();
+        builder.Services.AddSingleton<IReferralService>(sp => 
+            new MockReferralService(sp.GetRequiredService<IThirdPartyReferralService>()));
 
         // Configure CORS
         builder.Services.AddCors(options =>

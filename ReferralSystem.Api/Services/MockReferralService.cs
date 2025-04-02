@@ -4,18 +4,25 @@ namespace ReferralSystem.Api.Services;
 
 public class MockReferralService : IReferralService
 {
-    private static readonly Random Random = new();
     private static readonly List<ReferralHistoryItem> ReferralHistory = new();
+    private readonly IThirdPartyReferralService _thirdPartyService;
 
-    public Task<ReferralLinkResponse> GenerateReferralLinkAsync(ReferralLinkRequest request)
+    public MockReferralService(IThirdPartyReferralService thirdPartyService)
     {
-        var referralCode = GenerateReferralCode();
+        _thirdPartyService = thirdPartyService;
+    }
+
+    public async Task<ReferralLinkResponse> GenerateReferralLinkAsync(ReferralLinkRequest request)
+    {
+        var referralCode = await _thirdPartyService.GenerateReferralCodeAsync();
+        var expiresAt = await _thirdPartyService.GetReferralCodeExpirationAsync(referralCode);
+        
         var response = new ReferralLinkResponse
         {
             ReferralCode = referralCode,
             ReferralLink = $"https://example.com/refer/{referralCode}",
             ShortLink = $"https://ex.co/r/{referralCode}",
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = expiresAt,
             Destination = request.Destination
         };
 
@@ -27,7 +34,7 @@ public class MockReferralService : IReferralService
             CreatedAt = DateTime.UtcNow
         });
 
-        return Task.FromResult(response);
+        return response;
     }
 
     public Task<ReferralStats> GetReferralStatsAsync()
@@ -43,29 +50,33 @@ public class MockReferralService : IReferralService
         return Task.FromResult(stats);
     }
 
-    public Task<ReferralValidationResponse> ValidateReferralLinkAsync(ReferralValidationRequest request)
+    public async Task<ReferralValidationResponse> ValidateReferralLinkAsync(ReferralValidationRequest request)
     {
-        var isValid = request.ReferralCode.Length == 8 && request.ReferralLink.Contains(request.ReferralCode);
+        // First validate the code format
+        var isValidCode = await _thirdPartyService.ValidateReferralCodeAsync(request.ReferralCode);
+        
+        // Then check if the code matches the one in the link
+        var expectedLink = $"https://example.com/refer/{request.ReferralCode}";
+        var isValidLink = isValidCode && request.ReferralLink == expectedLink;
+        
+        DateTime? expiresAt = null;
+        if (isValidLink)
+        {
+            expiresAt = await _thirdPartyService.GetReferralCodeExpirationAsync(request.ReferralCode);
+        }
         
         var response = new ReferralValidationResponse
         {
-            IsValid = isValid,
-            Destination = isValid ? "/welcome" : null,
-            ExpiresAt = isValid ? DateTime.UtcNow.AddDays(7) : null,
-            ReferrerInfo = isValid ? new ReferrerInfo
+            IsValid = isValidLink,
+            Destination = isValidLink ? "/welcome" : null,
+            ExpiresAt = expiresAt,
+            ReferrerInfo = isValidLink ? new ReferrerInfo
             {
                 Id = Guid.NewGuid().ToString(),
                 ReferralCode = request.ReferralCode
             } : null
         };
 
-        return Task.FromResult(response);
-    }
-
-    private static string GenerateReferralCode()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 8)
-            .Select(s => s[Random.Next(s.Length)]).ToArray());
+        return response;
     }
 } 

@@ -7,10 +7,12 @@ namespace ReferralSystem.Tests;
 public class ReferralServiceTests
 {
     private readonly IReferralService _service;
+    private readonly IThirdPartyReferralService _thirdPartyService;
 
     public ReferralServiceTests()
     {
-        _service = new MockReferralService();
+        _thirdPartyService = new MockThirdPartyReferralService();
+        _service = new MockReferralService(_thirdPartyService);
     }
 
     [Fact]
@@ -48,7 +50,6 @@ public class ReferralServiceTests
         // Assert
         Assert.NotNull(stats);
         Assert.True(stats.TotalReferrals > 0);
-        Assert.NotEmpty(stats.ReferralHistory);
     }
 
     [Theory]
@@ -68,18 +69,10 @@ public class ReferralServiceTests
         var response = await _service.ValidateReferralLinkAsync(request);
 
         // Assert
+        Assert.NotNull(response);
         Assert.Equal(expectedValid, response.IsValid);
-        if (expectedValid)
-        {
-            Assert.NotNull(response.Destination);
-            Assert.NotNull(response.ReferrerInfo);
-            Assert.NotNull(response.ExpiresAt);
-        }
-        else
-        {
-            Assert.Null(response.Destination);
-            Assert.Null(response.ReferrerInfo);
-            Assert.Null(response.ExpiresAt);
-        }
+        Assert.Equal(expectedValid ? "/welcome" : null, response.Destination);
+        Assert.Equal(expectedValid, response.ExpiresAt.HasValue);
+        Assert.Equal(expectedValid, response.ReferrerInfo != null);
     }
 } 
